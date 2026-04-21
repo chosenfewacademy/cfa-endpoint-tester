@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CFA — fal.ai Endpoint Tester</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0c0c0e;--surface:#131316;--surface2:#1c1c21;--border:#2a2a32;--accent:#f59e0b;--accent2:#fb923c;--text:#e8e8f0;--muted:#6b7280;--success:#34d399;--error:#f87171;--radius:14px}
+html,body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:28px 22px 60px}
+h1{font-size:20px;font-weight:800;color:var(--accent);margin-bottom:4px}
+.sub{font-size:12px;color:var(--muted);margin-bottom:28px;font-family:monospace}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:18px}
+.ch{background:var(--surface2);border-bottom:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ch-title{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ep-pill{font-family:monospace;font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:3px 8px}
+.cb{padding:18px;display:flex;flex-direction:column;gap:14px}
+/* tags */
+.tag{font-size:9px;font-family:monospace;padding:2px 8px;border-radius:3px;font-weight:700;letter-spacing:.06em;white-space:nowrap}
+.tag-idle{background:rgba(107,114,128,.12);color:var(--muted);border:1px solid var(--border)}
+.tag-run{background:rgba(245,158,11,.12);color:var(--accent);border:1px solid rgba(245,158,11,.3)}
+.tag-ok{background:rgba(52,211,153,.12);color:var(--success);border:1px solid rgba(52,211,153,.3)}
+.tag-fail{background:rgba(248,113,113,.12);color:var(--error);border:1px solid rgba(248,113,113,.3)}
+/* labels */
+.lbl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;display:block}
+/* inputs */
+input[type=text],input[type=password],textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:monospace;font-size:12px;padding:9px 13px;outline:none;transition:border-color .2s}
+input[type=text]:focus,input[type=password]:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,158,11,.1)}
+textarea{resize:vertical;min-height:72px;line-height:1.65}
+select{font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;cursor:pointer;-webkit-appearance:none}
+select option{background:var(--surface2)}
+.key-row{display:flex;gap:8px}
+.key-row input{flex:1}
+/* buttons */
+button{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:9px;font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:transform .15s,box-shadow .15s,opacity .15s;white-space:nowrap}
+.bprim{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;box-shadow:0 4px 14px rgba(245,158,11,.25)}
+.bprim:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(245,158,11,.4)}
+.bprim:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.bsec{background:var(--surface2);color:var(--text);border:1px solid var(--border);font-size:11px;padding:7px 14px}
+.bsec:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+/* ref slots */
+.slots-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.slot{background:var(--bg);border:2px dashed var(--border);border-radius:10px;padding:11px;text-align:center;position:relative;transition:border-color .2s,border-style .2s}
+.slot.image-only{cursor:pointer}
+.slot.image-only:hover{border-color:var(--accent)}
+.slot.has-ref{border-style:solid;border-color:var(--success)}
+.slot.uploading{border-style:solid;border-color:var(--accent)}
+.slot.slot-err{border-style:solid;border-color:var(--error)}
+.slot-badge{font-size:9px;font-family:monospace;padding:2px 6px;border-radius:3px;font-weight:700;display:inline-block;margin-bottom:3px}
+.badge-req{background:rgba(248,113,113,.12);color:var(--error);border:1px solid rgba(248,113,113,.25)}
+.badge-opt{background:rgba(107,114,128,.1);color:var(--muted);border:1px solid var(--border)}
+.slot-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
+.slot-hint{font-size:10px;color:var(--muted);font-family:monospace;line-height:1.45;margin-bottom:6px}
+/* @ImageN badge — top-left of slot, appears when image is uploaded */
+.img-num{position:absolute;top:5px;left:5px;font-family:monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(245,158,11,.18);color:var(--accent);border:1px solid rgba(245,158,11,.4);display:none;z-index:2}
+.slot.has-ref .img-num{display:block}
+/* mode toggle */
+.mode-toggle{display:flex;gap:5px;margin-bottom:8px}
+.mode-btn{flex:1;padding:5px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-family:monospace;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+.mode-btn.active{border-color:var(--accent);background:rgba(245,158,11,.1);color:var(--accent)}
+/* upload area */
+.upload-area{cursor:pointer;padding:6px 0 2px}
+.upload-area:hover .upload-hint{color:var(--accent)}
+.upload-hint{font-size:10px;color:var(--muted);font-family:monospace;transition:color .15s}
+.slot img{width:100%;border-radius:6px;margin-top:6px;max-height:100px;object-fit:cover}
+.slot-status{font-family:monospace;font-size:9px;margin-top:4px;min-height:14px}
+.slot-textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:monospace;font-size:10px;color:var(--text);line-height:1.55;resize:vertical;min-height:68px;outline:none;margin-top:2px;transition:border-color .2s;text-align:left}
+.slot-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(245,158,11,.15)}
+.slot-clear{position:absolute;top:5px;right:5px;background:var(--error);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0;z-index:2}
+.slot.has-ref .slot-clear{display:flex}
+/* @Image legend panel */
+.legend{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:11px 14px;font-family:monospace;font-size:11px;line-height:1.8;display:none}
+.legend.visible{display:block}
+.legend-title{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.legend-row{display:flex;align-items:center;gap:8px}
+.legend-num{font-weight:700;color:var(--accent);min-width:60px}
+.legend-slot{color:var(--text)}
+.legend-hint{color:var(--muted);font-size:10px}
+/* result */
+.result-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;line-height:1.7;white-space:pre-wrap;word-break:break-all;min-height:48px;max-height:260px;overflow-y:auto;color:var(--muted)}
+.result-box.ok{border-color:var(--success);color:var(--success)}
+.result-box.fail{border-color:var(--error);color:var(--error)}
+.result-box.running{color:var(--accent)}
+.result-media{margin-top:10px;border-radius:8px;max-width:100%;display:none}
+/* status row */
+.status-row{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-idle{background:var(--muted)}
+.dot-run{background:var(--accent);animation:pulse 1s ease-in-out infinite}
+.dot-ok{background:var(--success)}
+.dot-fail{background:var(--error)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+/* note / info box */
+.note{font-size:11px;color:var(--muted);line-height:1.65;padding:10px 13px;background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.12);border-radius:8px}
+.note strong{color:var(--text)}
+/* instructions */
+.instr-section{margin-bottom:10px}
+.instr-section:last-child{margin-bottom:0}
+.instr-title{font-size:10px;font-weight:700;color:var(--text);letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.instr-body{font-size:11px;color:var(--muted);line-height:1.7}
+.instr-body li{margin-left:14px;margin-bottom:2px}
+.code{font-family:monospace;font-size:10px;color:var(--accent);background:rgba(245,158,11,.1);padding:1px 5px;border-radius:3px}
+.divider{border:none;border-top:1px solid var(--border);margin:10px 0}
+/* key saved */
+.key-saved{font-size:11px;color:var(--success);font-weight:700;display:none;margin-top:5px}
+/* summary */
+.sum-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.sum-row:last-child{border-bottom:none}
+.sum-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.sum-label{font-size:12px;font-weight:700}
+.sum-ep{font-family:monospace;font-size:10px;color:var(--muted);margin-top:1px}
+.sum-note{font-size:11px;color:var(--text);margin-top:3px}
+</style>
+</head>
+<body>
+
+<h1>⚡ CFA — fal.ai Endpoint Tester</h1>
+<p class="sub">Chosen Few Academy · Internal tool · Validate endpoints before running the main workflow</p>
+
+<!-- ════════════════════════════════════════════
+     INSTRUCTIONS
+════════════════════════════════════════════ -->
+<div class="card">
+  <div class="ch"><div class="ch-title">📖 How to Use This Tool</div></div>
+  <div class="cb">
+
+    <div class="instr-section">
+      <div class="instr-title">🔑 Step 1 — Save your fal.ai API Key</div>
+      <div class="instr-body">Paste your key in the card below and click Save. The key is stored in memory only — it is never saved to disk and disappears when you close the tab.</div>
+    </div>
+
+    <hr class="divider"/>
+
+    <div class="instr-section">
+      <div class="instr-title">🖼 Test 1 — Text to Image (no reference images)</div>
+      <div class="instr-body">
+        Use this when you want to generate an image from a prompt alone — no character photos, no scene photos.<br><br>
+        <strong>Endpoint:</strong> <span class="code">fal-ai/kling-image/v3/text-to-image</span><br>
+        <strong>Required:</strong> Prompt only. Write what you want to see. The model will generate purely from your description.
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <div class="instr-section">
+      <div class="instr-title">🎨 Test 2 — Image with Reference Slots (the main workflow path)</div>
+      <div class="instr-body">
+        This mirrors the full CFA image generation workflow. There are four reference inputs:<br><br>
+        <ul>
+          <li><strong>Subject</strong> — Upload a photo of the primary character. Image upload only. Always becomes <span class="code">@Image1</span> in your prompt.</li>
+          <li><strong>Co-Subject</strong> — Upload a second character if two people appear. Image upload only. Becomes <span class="code">@Image2</span> if uploaded.</li>
+          <li><strong>Scene</strong> — Either upload a photo of the environment, or switch to ✏ Describe and type it out. If an image is uploaded, it gets an <span class="code">@ImageN</span> number. If text is used, it is automatically appended to the prompt as <span class="code">Setting: ...</span></li>
+          <li><strong>Style</strong> — Same as Scene. Upload a visual reference image, or switch to ✏ Describe and write the style. Text mode appends <span class="code">Style: ...</span> to the prompt automatically.</li>
+        </ul>
+        <br>
+        <strong>The @Image numbering is automatic.</strong> As you upload images, each slot gets assigned a number in this order: Subject → Co-Subject → Scene → Style. The live legend below the slots always shows you which number belongs to which slot before you write your prompt.<br><br>
+        <strong>Endpoint auto-selects:</strong><br>
+        · If any images are uploaded → <span class="code">fal-ai/kling-image/o1</span> (character/style reference model)<br>
+        · If only text descriptions are used → <span class="code">fal-ai/kling-image/v3/text-to-image</span>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <div class="instr-section">
+      <div class="instr-title">✍ Writing the Prompt for Test 2</div>
+      <div class="instr-body">
+        When using the o1 reference model, your prompt must tell the model <em>how</em> to use each uploaded image. Reference them using the <span class="code">@ImageN</span> tags shown in the live legend.<br><br>
+        <strong>Example:</strong> If Subject is @Image1 and Scene is @Image2, write:<br>
+        <span class="code" style="display:block;margin-top:5px;padding:8px;font-size:11px;line-height:1.6">"Draw @Image1 sitting in the environment from @Image2, cinematic lighting, 16:9"</span>
+        <br>
+        If you are using text descriptions for Scene and Style instead of images, you do not need to reference them in the prompt — they are automatically added for you.
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <div class="instr-section">
+      <div class="instr-title">🎬 Test 3 — Video from Reference Images</div>
+      <div class="instr-body">
+        Generates a video clip using Kling's image-to-video model.<br><br>
+        <strong>Endpoint:</strong> <span class="code">fal-ai/kling-video/v1.6/pro/image-to-video</span><br>
+        <ul>
+          <li><strong>Start Frame</strong> (required) — Upload the image you want to be the very first frame of the video. This locks the opening visual so your character doesn't drift between clips.</li>
+          <li><strong>Subject</strong> (optional) — Upload a character reference to keep identity consistent throughout the clip.</li>
+          <li><strong>Prompt</strong> — Describe the motion, camera move, and mood. No @Image tags needed here.</li>
+          <li><strong>Duration</strong> — 5 or 10 seconds. Video generation takes approximately 60–90 seconds.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     API KEY
+════════════════════════════════════════════ -->
+<div class="card">
+  <div class="ch">
+    <div class="ch-title">🔑 fal.ai API Key</div>
+    <span class="tag tag-idle" id="key-tag">NOT SET</span>
+  </div>
+  <div class="cb">
+    <div>
+      <label class="lbl">API Key</label>
+      <div class="key-row">
+        <input type="password" id="fal-key" placeholder="your-fal-api-key" autocomplete="off"/>
+        <button class="bsec" onclick="saveKey()">Save</button>
+      </div>
+      <div class="key-saved" id="key-saved">✓ Key saved for this session</div>
+    </div>
+    <div class="note">Stored in memory only for this browser tab. Disappears when you close the tab.</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     TEST 1 — TEXT TO IMAGE
+════════════════════════════════════════════ -->
+<div class="card">
+  <div class="ch">
+    <div class="ch-title">🖼 Test 1 — Text to Image <span class="ep-pill">kling-image/v3/text-to-image</span></div>
+    <span class="tag tag-idle" id="t1-tag">IDLE</span>
+  </div>
+  <div class="cb">
+    <div class="note"><strong>No images needed.</strong> Just write a prompt and generate. Use this to confirm the text-to-image path is working before adding reference images.</div>
+    <div>
+      <label class="lbl">Prompt</label>
+      <textarea id="t1-prompt">A glowing orange basketball on a hardwood court at night, cinematic lighting, 16:9</textarea>
+    </div>
+    <div class="status-row"><div class="dot dot-idle" id="t1-dot"></div><span id="t1-status">Ready</span></div>
+    <div><button class="bprim" id="t1-btn" onclick="runTest1()">▶ Run Test 1</button></div>
+    <div>
+      <label class="lbl">Response</label>
+      <div class="result-box" id="t1-result">Waiting…</div>
+      <img id="t1-img" class="result-media" alt="Generated"/>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     TEST 2 — IMAGE WITH REFERENCES
+════════════════════════════════════════════ -->
+<div class="card">
+  <div class="ch">
+    <div class="ch-title">🎨 Test 2 — Image with References <span class="ep-pill" id="t2-ep-pill">auto-selects endpoint</span></div>
+    <span class="tag tag-idle" id="t2-tag">IDLE</span>
+  </div>
+  <div class="cb">
+
+    <div class="note">
+      Upload images and/or describe in text. The <strong>@Image number for each uploaded slot updates live</strong> below — check the legend before writing your prompt.
+    </div>
+
+    <!-- Reference slots -->
+    <div>
+      <label class="lbl">Reference Inputs</label>
+      <div class="slots-grid">
+
+        <!-- Subject -->
+        <div class="slot image-only" id="slot-t2-subject" onclick="triggerUpload('t2-subject')">
+          <input type="file" id="upload-t2-subject" accept="image/*" style="display:none" onchange="handleUpload('t2-subject',this)"/>
+          <div class="img-num" id="imgnum-t2-subject"></div>
+          <span class="slot-badge badge-req">required</span>
+          <div class="slot-name">Subject</div>
+          <div class="slot-hint">Primary character · image only</div>
+          <div class="upload-area"><div class="upload-hint">📁 tap to upload</div></div>
+          <div class="slot-status" id="status-t2-subject"></div>
+          <button class="slot-clear" onclick="clearSlot(event,'t2-subject')">×</button>
+        </div>
+
+        <!-- Co-Subject -->
+        <div class="slot image-only" id="slot-t2-cosubject" onclick="triggerUpload('t2-cosubject')">
+          <input type="file" id="upload-t2-cosubject" accept="image/*" style="display:none" onchange="handleUpload('t2-cosubject',this)"/>
+          <div class="img-num" id="imgnum-t2-cosubject"></div>
+          <span class="slot-badge badge-opt">optional</span>
+          <div class="slot-name">Co-Subject</div>
+          <div class="slot-hint">Second character · image only</div>
+          <div class="upload-area"><div class="upload-hint">📁 tap to upload</div></div>
+          <div class="slot-status" id="status-t2-cosubject"></div>
+          <button class="slot-clear" onclick="clearSlot(event,'t2-cosubject')">×</button>
+        </div>
+
+        <!-- Scene (upload OR text) -->
+        <div class="slot" id="slot-t2-scene">
+          <input type="file" id="upload-t2-scene" accept="image/*" style="display:none" onchange="handleUpload('t2-scene',this)"/>
+          <div class="img-num" id="imgnum-t2-scene"></div>
+          <span class="slot-badge badge-opt">optional</span>
+          <div class="slot-name">Scene</div>
+          <div class="slot-hint">Background / environment</div>
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="t2-scene-mode-upload" onclick="setMode('t2-scene','upload')">📁 Upload</button>
+            <button class="mode-btn" id="t2-scene-mode-text" onclick="setMode('t2-scene','text')">✏ Describe</button>
+          </div>
+          <div class="upload-area" id="t2-scene-upload-area" onclick="triggerUpload('t2-scene')">
+            <div class="upload-hint">tap to upload image</div>
+          </div>
+          <textarea class="slot-textarea" id="t2-scene-textarea" placeholder="Describe the setting… e.g. Modern home office, warm desk lamp, city skyline through window at night" style="display:none" oninput="handleTextMode('t2-scene',this)"></textarea>
+          <div class="slot-status" id="status-t2-scene"></div>
+          <button class="slot-clear" onclick="clearSlot(event,'t2-scene')">×</button>
+        </div>
+
+        <!-- Style (upload OR text) -->
+        <div class="slot" id="slot-t2-style">
+          <input type="file" id="upload-t2-style" accept="image/*" style="display:none" onchange="handleUpload('t2-style',this)"/>
+          <div class="img-num" id="imgnum-t2-style"></div>
+          <span class="slot-badge badge-opt">optional</span>
+          <div class="slot-name">Style</div>
+          <div class="slot-hint">Visual tone / color / mood</div>
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="t2-style-mode-upload" onclick="setMode('t2-style','upload')">📁 Upload</button>
+            <button class="mode-btn" id="t2-style-mode-text" onclick="setMode('t2-style','text')">✏ Describe</button>
+          </div>
+          <div class="upload-area" id="t2-style-upload-area" onclick="triggerUpload('t2-style')">
+            <div class="upload-hint">tap to upload image</div>
+          </div>
+          <textarea class="slot-textarea" id="t2-style-textarea" placeholder="Describe the visual style… e.g. Warm cinematic, muted amber tones, soft shadows, clean 2D illustrated feel" style="display:none" oninput="handleTextMode('t2-style',this)"></textarea>
+          <div class="slot-status" id="status-t2-style"></div>
+          <button class="slot-clear" onclick="clearSlot(event,'t2-style')">×</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Live @Image legend — shows which slot = which number -->
+    <div id="t2-legend" class="legend">
+      <div class="legend-title">📌 @Image Reference Map — use these in your prompt below</div>
+      <div id="t2-legend-rows"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px">Slots using text descriptions are appended to the prompt automatically — no @Image tag needed for those.</div>
+    </div>
+
+    <!-- Prompt -->
+    <div>
+      <label class="lbl">Prompt</label>
+      <textarea id="t2-prompt" placeholder="Write your prompt here. Reference uploaded images using @Image1, @Image2, etc. — check the map above to see which number belongs to which slot.&#10;&#10;Example: Draw @Image1 sitting in the environment from @Image2, cinematic lighting, 16:9"></textarea>
+    </div>
+
+    <div class="status-row"><div class="dot dot-idle" id="t2-dot"></div><span id="t2-status">Ready</span></div>
+    <div><button class="bprim" id="t2-btn" onclick="runTest2()">▶ Run Test 2</button></div>
+    <div>
+      <label class="lbl">Response</label>
+      <div class="result-box" id="t2-result">Waiting…</div>
+      <img id="t2-img" class="result-media" alt="Generated"/>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     TEST 3 — VIDEO
+════════════════════════════════════════════ -->
+<div class="card">
+  <div class="ch">
+    <div class="ch-title">🎬 Test 3 — Video from References <span class="ep-pill">kling-video/v1.6/pro/image-to-video</span></div>
+    <span class="tag tag-idle" id="t3-tag">IDLE</span>
+  </div>
+  <div class="cb">
+    <div class="note">
+      <strong>Start Frame</strong> (required) — the image that becomes the literal first frame of the video. Without it Kling invents the opening and your character may drift.<br>
+      <strong>Subject</strong> (optional) — a separate character reference to lock identity across the full clip.<br>
+      No @Image tags needed in the video prompt — just describe the motion, camera move, and mood.
+    </div>
+
+    <div>
+      <label class="lbl">Reference Images</label>
+      <div class="slots-grid">
+
+        <!-- Start Frame -->
+        <div class="slot image-only" id="slot-t3-startframe" onclick="triggerUpload('t3-startframe')">
+          <input type="file" id="upload-t3-startframe" accept="image/*" style="display:none" onchange="handleUpload('t3-startframe',this)"/>
+          <span class="slot-badge badge-req">required</span>
+          <div class="slot-name">Start Frame</div>
+          <div class="slot-hint">First frame of the video</div>
+          <div class="upload-area"><div class="upload-hint">📁 tap to upload</div></div>
+          <div class="slot-status" id="status-t3-startframe"></div>
+          <button class="slot-clear" onclick="clearSlot(event,'t3-startframe')">×</button>
+        </div>
+
+        <!-- Subject -->
+        <div class="slot image-only" id="slot-t3-subject" onclick="triggerUpload('t3-subject')">
+          <input type="file" id="upload-t3-subject" accept="image/*" style="display:none" onchange="handleUpload('t3-subject',this)"/>
+          <span class="slot-badge badge-opt">optional</span>
+          <div class="slot-name">Subject</div>
+          <div class="slot-hint">Character reference — locks identity</div>
+          <div class="upload-area"><div class="upload-hint">📁 tap to upload</div></div>
+          <div class="slot-status" id="status-t3-subject"></div>
+          <button class="slot-clear" onclick="clearSlot(event,'t3-subject')">×</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div>
+      <label class="lbl">Prompt — describe motion, camera movement, and mood (no @Image tags needed)</label>
+      <textarea id="t3-prompt" placeholder="e.g. The athlete takes a deep breath and looks up with determination, slow dolly in, cinematic lighting"></textarea>
+    </div>
+    <div>
+      <label class="lbl">Duration</label>
+      <select id="t3-duration">
+        <option value="5">5 seconds</option>
+        <option value="10" selected>10 seconds</option>
+      </select>
+    </div>
+    <div class="status-row"><div class="dot dot-idle" id="t3-dot"></div><span id="t3-status">Ready — upload Start Frame first</span></div>
+    <div><button class="bprim" id="t3-btn" onclick="runTest3()">▶ Run Test 3 (~60–90 seconds)</button></div>
+    <div>
+      <label class="lbl">Response</label>
+      <div class="result-box" id="t3-result">Waiting…</div>
+      <video id="t3-video" class="result-media" controls autoplay muted loop></video>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SUMMARY
+════════════════════════════════════════════ -->
+<div class="card">
+  <div class="ch"><div class="ch-title">📋 Test Summary</div></div>
+  <div class="cb" id="summary"><div class="note">Run tests above — pass/fail results will appear here.</div></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────
+// State
+// refs[slot] = { url: 'https://...' }  ← uploaded image (has @ImageN)
+//            | { text: 'description' } ← text mode (appended to prompt)
+// ─────────────────────────────────────────────────────────────────────
+const refs = {};
+const testResults = {};
+
+// Slot order for @Image numbering — always Subject → Co-Subject → Scene → Style
+const IMAGE_SLOTS = ['t2-subject','t2-cosubject','t2-scene','t2-style'];
+const SLOT_LABELS = {
+  't2-subject':   'Subject',
+  't2-cosubject': 'Co-Subject',
+  't2-scene':     'Scene',
+  't2-style':     'Style'
+};
+
+// ─── API key ──────────────────────────────────────────────────────────
+function saveKey(){
+  const k = document.getElementById('fal-key').value.trim();
+  if(!k){ alert('Paste your fal.ai key first.'); return; }
+  sessionStorage.setItem('cfa_test_key', k);
+  document.getElementById('key-saved').style.display = 'block';
+  setTag('key','ok','SET ✓');
+}
+function getKey(){
+  return sessionStorage.getItem('cfa_test_key') || document.getElementById('fal-key').value.trim();
+}
+
+// ─── fal.ai upload ────────────────────────────────────────────────────
+function triggerUpload(slot){
+  document.getElementById('upload-' + slot).click();
+}
+
+async function uploadToFal(file){
+  const key = getKey();
+  if(!key) throw new Error('fal.ai API key not set — save it above first.');
+  const { fal } = await import('https://esm.sh/@fal-ai/client@1');
+  fal.config({ credentials: key });
+  const url = await fal.storage.upload(file);
+  if(!url) throw new Error('fal.ai upload returned no URL');
+  return url;
+}
+
+async function handleUpload(slot, input){
+  const file = input.files[0];
+  if(!file) return;
+  const slotEl = document.getElementById('slot-' + slot);
+  const statusEl = document.getElementById('status-' + slot);
+
+  // Show local preview instantly
+  const blobUrl = URL.createObjectURL(file);
+  let img = slotEl.querySelector('img');
+  if(!img){ img = document.createElement('img'); slotEl.appendChild(img); }
+  img.src = blobUrl;
+
+  slotEl.classList.remove('has-ref','slot-err');
+  slotEl.classList.add('uploading');
+  statusEl.style.color = 'var(--accent)';
+  statusEl.textContent = '⬆ Uploading to fal.ai…';
+
+  try{
+    const httpsUrl = await uploadToFal(file);
+    refs[slot] = { url: httpsUrl };
+    slotEl.classList.remove('uploading');
+    slotEl.classList.add('has-ref');
+    statusEl.style.color = 'var(--success)';
+    statusEl.textContent = '✓ Ready';
+    setTimeout(()=>{ if(statusEl.textContent === '✓ Ready') statusEl.textContent = ''; }, 2500);
+  }catch(err){
+    delete refs[slot];
+    slotEl.classList.remove('uploading');
+    slotEl.classList.add('slot-err');
+    if(img) img.remove();
+    statusEl.style.color = 'var(--error)';
+    statusEl.textContent = '✗ ' + (err.message || 'Upload failed');
+    input.value = '';
+  }
+  updateT2State();
+}
+
+function clearSlot(e, slot){
+  e.stopPropagation();
+  delete refs[slot];
+  const slotEl = document.getElementById('slot-' + slot);
+  slotEl.classList.remove('has-ref','uploading','slot-err');
+  const img = slotEl.querySelector('img');
+  if(img) img.remove();
+  const statusEl = document.getElementById('status-' + slot);
+  if(statusEl) statusEl.textContent = '';
+  const input = document.getElementById('upload-' + slot);
+  if(input) input.value = '';
+  const ta = document.getElementById(slot + '-textarea');
+  if(ta) ta.value = '';
+  updateT2State();
+}
+
+// ─── Scene / Style mode toggle ────────────────────────────────────────
+function setMode(slot, mode){
+  const uploadBtn  = document.getElementById(slot + '-mode-upload');
+  const textBtn    = document.getElementById(slot + '-mode-text');
+  const uploadArea = document.getElementById(slot + '-upload-area');
+  const textarea   = document.getElementById(slot + '-textarea');
+  const slotEl     = document.getElementById('slot-' + slot);
+
+  if(mode === 'upload'){
+    uploadBtn.classList.add('active'); textBtn.classList.remove('active');
+    uploadArea.style.display = ''; textarea.style.display = 'none';
+    if(refs[slot]?.text){ delete refs[slot]; slotEl.classList.remove('has-ref'); }
+  } else {
+    textBtn.classList.add('active'); uploadBtn.classList.remove('active');
+    uploadArea.style.display = 'none'; textarea.style.display = '';
+    if(refs[slot]?.url){
+      delete refs[slot]; slotEl.classList.remove('has-ref');
+      const img = slotEl.querySelector('img'); if(img) img.remove();
+      document.getElementById('upload-' + slot).value = '';
+    }
+  }
+  updateT2State();
+}
+
+function handleTextMode(slot, input){
+  const val = input.value.trim();
+  const slotEl = document.getElementById('slot-' + slot);
+  if(val){ refs[slot] = { text: val }; slotEl.classList.add('has-ref'); }
+  else   { delete refs[slot]; slotEl.classList.remove('has-ref'); }
+  updateT2State();
+}
+
+// ─── Live @Image state — updates pill, slot badges, and legend ─────────
+function updateT2State(){
+  // Build ordered map: only slots with uploaded images get @ImageN numbers
+  const imageMap = []; // [{ slot, label, num }]
+  let counter = 1;
+  IMAGE_SLOTS.forEach(slot => {
+    if(refs[slot]?.url?.startsWith('https://')){
+      imageMap.push({ slot, label: SLOT_LABELS[slot], num: counter++ });
+    }
+  });
+
+  // Update endpoint pill
+  const pill = document.getElementById('t2-ep-pill');
+  pill.textContent = imageMap.length > 0 ? 'kling-image/o1' : 'kling-image/v3/text-to-image';
+
+  // Update @ImageN badge on each slot
+  IMAGE_SLOTS.forEach(slot => {
+    const badge = document.getElementById('imgnum-' + slot);
+    if(!badge) return;
+    const entry = imageMap.find(m => m.slot === slot);
+    badge.textContent = entry ? '@Image' + entry.num : '';
+  });
+
+  // Update legend
+  const legend = document.getElementById('t2-legend');
+  const legendRows = document.getElementById('t2-legend-rows');
+  if(imageMap.length === 0){
+    legend.classList.remove('visible');
+    return;
+  }
+  legend.classList.add('visible');
+  legendRows.innerHTML = imageMap.map(m =>
+    `<div class="legend-row">
+      <span class="legend-num">@Image${m.num}</span>
+      <span class="legend-slot">= ${m.label}</span>
+      <span class="legend-hint">→ use @Image${m.num} in your prompt to reference this image</span>
+    </div>`
+  ).join('');
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────
+function setTag(n, state, label){
+  const id = (n === 'key') ? 'key-tag' : 't' + n + '-tag';
+  const el = document.getElementById(id);
+  const map = { idle:'tag-idle', run:'tag-run', ok:'tag-ok', fail:'tag-fail' };
+  el.className = 'tag ' + (map[state] || 'tag-idle');
+  el.textContent = label || state.toUpperCase();
+}
+
+function setStatus(n, state, msg){
+  document.getElementById('t'+n+'-dot').className = 'dot dot-' + state;
+  document.getElementById('t'+n+'-status').textContent = msg;
+  const labels = { idle:'IDLE', run:'RUNNING…', ok:'PASS ✓', fail:'FAIL ✗' };
+  setTag(n, state, labels[state]);
+}
+
+function setResult(n, text, cls, mediaUrl, mediaType){
+  const box = document.getElementById('t'+n+'-result');
+  box.textContent = text;
+  box.className = 'result-box' + (cls ? ' ' + cls : '');
+  const img = document.getElementById('t'+n+'-img');
+  const vid = document.getElementById('t'+n+'-video');
+  if(img){ img.style.display='none'; img.src=''; }
+  if(vid){ vid.style.display='none'; vid.src=''; }
+  if(mediaUrl){
+    if(mediaType==='video'&&vid){ vid.src=mediaUrl; vid.style.display='block'; }
+    else if(img){ img.src=mediaUrl; img.style.display='block'; }
+  }
+}
+
+function recordResult(n, pass, label, endpoint, note){
+  testResults[n] = { pass, label, endpoint, note };
+  document.getElementById('summary').innerHTML = Object.values(testResults).map(r => `
+    <div class="sum-row">
+      <div class="sum-icon">${r.pass?'✅':'❌'}</div>
+      <div>
+        <div class="sum-label" style="color:${r.pass?'var(--success)':'var(--error)'}">${r.label}</div>
+        <div class="sum-ep">${r.endpoint}</div>
+        <div class="sum-note">${r.note}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ─── fal.ai call ──────────────────────────────────────────────────────
+async function callFal(endpoint, body){
+  const key = getKey();
+  if(!key) throw new Error('fal.ai API key not set.');
+  const resp = await fetch('https://fal.run/' + endpoint, {
+    method:'POST',
+    headers:{'Authorization':'Key '+key,'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  const raw = await resp.text();
+  let parsed; try{ parsed = JSON.parse(raw); }catch(e){ parsed=null; }
+  if(!resp.ok){
+    const msg = parsed?.detail||parsed?.error||parsed?.message||raw||('HTTP '+resp.status);
+    const err = new Error(typeof msg==='string'?msg:JSON.stringify(msg));
+    err.raw = raw; throw err;
+  }
+  return { parsed, raw };
+}
+
+// ─── TEST 1: Text to Image ─────────────────────────────────────────────
+async function runTest1(){
+  if(!getKey()){ alert('Save your fal.ai key first.'); return; }
+  const prompt = document.getElementById('t1-prompt').value.trim();
+  if(!prompt){ alert('Add a prompt.'); return; }
+  const ep = 'fal-ai/kling-image/v3/text-to-image';
+  const body = { prompt, aspect_ratio:'16:9', num_images:1 };
+  document.getElementById('t1-btn').disabled = true;
+  setStatus(1,'run','Calling endpoint…');
+  setResult(1,'POST → '+ep+'\n\n'+JSON.stringify(body,null,2),'running');
+  try{
+    const { parsed } = await callFal(ep, body);
+    const imgUrl = parsed?.images?.[0]?.url||'';
+    setStatus(1,'ok','Success');
+    setResult(1,JSON.stringify(parsed,null,2),'ok',imgUrl);
+    recordResult(1,true,'Test 1 — Text to Image',ep,imgUrl?'Image: '+imgUrl.slice(0,80)+'…':'Response OK');
+  }catch(err){
+    setStatus(1,'fail',err.message.slice(0,80));
+    setResult(1,err.message+(err.raw?'\n\nRaw:\n'+err.raw:''),'fail');
+    recordResult(1,false,'Test 1 — Text to Image',ep,err.message.slice(0,120));
+  }
+  document.getElementById('t1-btn').disabled = false;
+}
+
+// ─── TEST 2: Image with References ────────────────────────────────────
+async function runTest2(){
+  if(!getKey()){ alert('Save your fal.ai key first.'); return; }
+  const basePrompt = document.getElementById('t2-prompt').value.trim();
+  if(!basePrompt){ alert('Add a prompt — use the @Image map above to reference your uploaded images.'); return; }
+
+  // Append text-mode descriptions (same as main CFA tool)
+  let finalPrompt = basePrompt;
+  if(refs['t2-scene']?.text)  finalPrompt += ' Setting: '  + refs['t2-scene'].text + '.';
+  if(refs['t2-style']?.text)  finalPrompt += ' Style: '    + refs['t2-style'].text + '.';
+
+  // Collect image URLs in fixed slot order → determines @Image numbering
+  const imageUrls = IMAGE_SLOTS
+    .map(s => refs[s]?.url)
+    .filter(u => u?.startsWith('https://'));
+
+  let ep, body;
+  if(imageUrls.length > 0){
+    ep   = 'fal-ai/kling-image/o1';
+    body = { prompt: finalPrompt, image_urls: imageUrls, aspect_ratio:'16:9', num_images:1 };
+  } else {
+    ep   = 'fal-ai/kling-image/v3/text-to-image';
+    body = { prompt: finalPrompt, aspect_ratio:'16:9', num_images:1 };
+  }
+
+  document.getElementById('t2-btn').disabled = true;
+  setStatus(2,'run', imageUrls.length
+    ? 'Calling o1 with '+imageUrls.length+' reference image(s)…'
+    : 'No images uploaded — calling text-to-image…');
+  setResult(2,'POST → '+ep+'\n\n'+JSON.stringify(body,null,2),'running');
+  try{
+    const { parsed } = await callFal(ep, body);
+    const imgUrl = parsed?.images?.[0]?.url||'';
+    setStatus(2,'ok','Success');
+    setResult(2,JSON.stringify(parsed,null,2),'ok',imgUrl);
+    recordResult(2,true,'Test 2 — Image + References',ep,imgUrl?'Image: '+imgUrl.slice(0,80)+'…':'Response OK');
+  }catch(err){
+    setStatus(2,'fail',err.message.slice(0,80));
+    setResult(2,err.message+(err.raw?'\n\nRaw:\n'+err.raw:''),'fail');
+    recordResult(2,false,'Test 2 — Image + References',ep,err.message.slice(0,120));
+  }
+  document.getElementById('t2-btn').disabled = false;
+}
+
+// ─── TEST 3: Video ─────────────────────────────────────────────────────
+async function runTest3(){
+  if(!getKey()){ alert('Save your fal.ai key first.'); return; }
+  if(!refs['t3-startframe']?.url?.startsWith('https://')){
+    alert('Upload a Start Frame image first — this endpoint requires image_url.'); return;
+  }
+  const prompt = document.getElementById('t3-prompt').value.trim();
+  if(!prompt){ alert('Add a prompt describing the motion and mood.'); return; }
+  const duration = parseInt(document.getElementById('t3-duration').value, 10);
+  const ep = 'fal-ai/kling-video/v1.6/pro/image-to-video';
+  const body = { prompt, duration, aspect_ratio:'16:9', image_url: refs['t3-startframe'].url };
+  if(refs['t3-subject']?.url?.startsWith('https://'))
+    body.subject_reference_image_url = refs['t3-subject'].url;
+
+  document.getElementById('t3-btn').disabled = true;
+  setStatus(3,'run','Generating video — please wait ~60–90 seconds…');
+  setResult(3,'POST → '+ep+'\n\n'+JSON.stringify(body,null,2),'running');
+  try{
+    const { parsed } = await callFal(ep, body);
+    const vidUrl = parsed?.video?.url||parsed?.url||'';
+    setStatus(3,'ok','Success');
+    setResult(3,JSON.stringify(parsed,null,2),'ok',vidUrl,'video');
+    recordResult(3,true,'Test 3 — Video (image-to-video)',ep,vidUrl?'Video: '+vidUrl.slice(0,80)+'…':'Response OK');
+  }catch(err){
+    setStatus(3,'fail',err.message.slice(0,80));
+    setResult(3,err.message+(err.raw?'\n\nRaw:\n'+err.raw:''),'fail');
+    recordResult(3,false,'Test 3 — Video (image-to-video)',ep,err.message.slice(0,120));
+  }
+  document.getElementById('t3-btn').disabled = false;
+}
+</script>
+</body>
+</html>
