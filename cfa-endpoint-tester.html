@@ -143,33 +143,17 @@ button{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-r
     <hr class="divider"/>
 
     <div class="instr-section">
-      <div class="instr-title">🎨 Test 2 — Image with Reference Slots (the main workflow path)</div>
+      <div class="instr-title">🎨 Test 2 — Flux Pro Image (the main workflow path)</div>
       <div class="instr-body">
-        This mirrors the full CFA image generation workflow. There are four reference inputs:<br><br>
+        Use this to test the primary image generation endpoint used in the CFA workflow.<br><br>
+        <strong>Endpoint:</strong> <span class="code">fal-ai/flux-pro/v1.1</span><br><br>
         <ul>
-          <li><strong>Subject</strong> — Upload a photo of the primary character. Image upload only. Always becomes <span class="code">@Image1</span> in your prompt.</li>
-          <li><strong>Co-Subject</strong> — Upload a second character if two people appear. Image upload only. Becomes <span class="code">@Image2</span> if uploaded.</li>
-          <li><strong>Scene</strong> — Either upload a photo of the environment, or switch to ✏ Describe and type it out. If an image is uploaded, it gets an <span class="code">@ImageN</span> number. If text is used, it is automatically appended to the prompt as <span class="code">Setting: ...</span></li>
-          <li><strong>Style</strong> — Same as Scene. Upload a visual reference image, or switch to ✏ Describe and write the style. Text mode appends <span class="code">Style: ...</span> to the prompt automatically.</li>
+          <li><strong>Prompt</strong> — Describe the scene: setting, characters, action, lighting, mood. Write in plain English — no @Image tags needed.</li>
+          <li><strong>Subject Reference</strong> (optional) — Upload a character photo. It is passed as <span class="code">reference_image_url</span> to anchor the character's appearance across scenes.</li>
         </ul>
         <br>
-        <strong>The @Image numbering is automatic.</strong> As you upload images, each slot gets assigned a number in this order: Subject → Co-Subject → Scene → Style. The live legend below the slots always shows you which number belongs to which slot before you write your prompt.<br><br>
-        <strong>Endpoint auto-selects:</strong><br>
-        · If any images are uploaded → <span class="code">fal-ai/kling-image/o1</span> (character/style reference model)<br>
-        · If only text descriptions are used → <span class="code">fal-ai/kling-image/v3/text-to-image</span>
-      </div>
-    </div>
-
-    <hr class="divider"/>
-
-    <div class="instr-section">
-      <div class="instr-title">✍ Writing the Prompt for Test 2</div>
-      <div class="instr-body">
-        When using the o1 reference model, your prompt must tell the model <em>how</em> to use each uploaded image. Reference them using the <span class="code">@ImageN</span> tags shown in the live legend.<br><br>
-        <strong>Example:</strong> If Subject is @Image1 and Scene is @Image2, write:<br>
-        <span class="code" style="display:block;margin-top:5px;padding:8px;font-size:11px;line-height:1.6">"Draw @Image1 sitting in the environment from @Image2, cinematic lighting, 16:9"</span>
-        <br>
-        If you are using text descriptions for Scene and Style instead of images, you do not need to reference them in the prompt — they are automatically added for you.
+        <strong>Body sent to fal.ai:</strong><br>
+        <span class="code" style="display:block;margin-top:5px;padding:8px;font-size:11px;line-height:1.7">image_size: "landscape_16_9"<br>num_images: 1<br>safety_tolerance: "2"<br>output_format: "jpeg"<br>reference_image_url: "&lt;subject_url&gt;" (if uploaded)</span>
       </div>
     </div>
 
@@ -242,96 +226,38 @@ button{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-r
 ════════════════════════════════════════════ -->
 <div class="card">
   <div class="ch">
-    <div class="ch-title">🎨 Test 2 — Image with References <span class="ep-pill" id="t2-ep-pill">auto-selects endpoint</span></div>
+    <div class="ch-title">🎨 Test 2 — Flux Pro Image <span class="ep-pill">flux-pro/v1.1</span></div>
     <span class="tag tag-idle" id="t2-tag">IDLE</span>
   </div>
   <div class="cb">
 
     <div class="note">
-      Upload images and/or describe in text. The <strong>@Image number for each uploaded slot updates live</strong> below — check the legend before writing your prompt.
+      <strong>Flux Pro</strong> generates a single image from your prompt. Optionally upload a <strong>Subject</strong> character reference — it is passed as <code class="code">reference_image_url</code> to anchor the character's appearance.
     </div>
 
-    <!-- Reference slots -->
+    <!-- Reference slot -->
     <div>
       <label class="lbl">Reference Inputs</label>
-      <div class="slots-grid">
+      <div class="slots-grid" style="grid-template-columns:1fr">
 
-        <!-- Subject -->
+        <!-- Subject Reference -->
         <div class="slot image-only" id="slot-t2-subject" onclick="triggerUpload('t2-subject')">
           <input type="file" id="upload-t2-subject" accept="image/*" style="display:none" onchange="handleUpload('t2-subject',this)"/>
-          <div class="img-num" id="imgnum-t2-subject"></div>
-          <span class="slot-badge badge-req">required</span>
-          <div class="slot-name">Subject</div>
-          <div class="slot-hint">Primary character · image only</div>
+          <span class="slot-badge badge-opt">optional</span>
+          <div class="slot-name">Subject Reference</div>
+          <div class="slot-hint">Upload a character reference. Passed as reference_image_url to Flux Pro.</div>
           <div class="upload-area"><div class="upload-hint">📁 tap to upload</div></div>
           <div class="slot-status" id="status-t2-subject"></div>
           <button class="slot-clear" onclick="clearSlot(event,'t2-subject')">×</button>
         </div>
 
-        <!-- Co-Subject -->
-        <div class="slot image-only" id="slot-t2-cosubject" onclick="triggerUpload('t2-cosubject')">
-          <input type="file" id="upload-t2-cosubject" accept="image/*" style="display:none" onchange="handleUpload('t2-cosubject',this)"/>
-          <div class="img-num" id="imgnum-t2-cosubject"></div>
-          <span class="slot-badge badge-opt">optional</span>
-          <div class="slot-name">Co-Subject</div>
-          <div class="slot-hint">Second character · image only</div>
-          <div class="upload-area"><div class="upload-hint">📁 tap to upload</div></div>
-          <div class="slot-status" id="status-t2-cosubject"></div>
-          <button class="slot-clear" onclick="clearSlot(event,'t2-cosubject')">×</button>
-        </div>
-
-        <!-- Scene (upload OR text) -->
-        <div class="slot" id="slot-t2-scene">
-          <input type="file" id="upload-t2-scene" accept="image/*" style="display:none" onchange="handleUpload('t2-scene',this)"/>
-          <div class="img-num" id="imgnum-t2-scene"></div>
-          <span class="slot-badge badge-opt">optional</span>
-          <div class="slot-name">Scene</div>
-          <div class="slot-hint">Background / environment</div>
-          <div class="mode-toggle">
-            <button class="mode-btn active" id="t2-scene-mode-upload" onclick="setMode('t2-scene','upload')">📁 Upload</button>
-            <button class="mode-btn" id="t2-scene-mode-text" onclick="setMode('t2-scene','text')">✏ Describe</button>
-          </div>
-          <div class="upload-area" id="t2-scene-upload-area" onclick="triggerUpload('t2-scene')">
-            <div class="upload-hint">tap to upload image</div>
-          </div>
-          <textarea class="slot-textarea" id="t2-scene-textarea" placeholder="Describe the setting… e.g. Modern home office, warm desk lamp, city skyline through window at night" style="display:none" oninput="handleTextMode('t2-scene',this)"></textarea>
-          <div class="slot-status" id="status-t2-scene"></div>
-          <button class="slot-clear" onclick="clearSlot(event,'t2-scene')">×</button>
-        </div>
-
-        <!-- Style (upload OR text) -->
-        <div class="slot" id="slot-t2-style">
-          <input type="file" id="upload-t2-style" accept="image/*" style="display:none" onchange="handleUpload('t2-style',this)"/>
-          <div class="img-num" id="imgnum-t2-style"></div>
-          <span class="slot-badge badge-opt">optional</span>
-          <div class="slot-name">Style</div>
-          <div class="slot-hint">Visual tone / color / mood</div>
-          <div class="mode-toggle">
-            <button class="mode-btn active" id="t2-style-mode-upload" onclick="setMode('t2-style','upload')">📁 Upload</button>
-            <button class="mode-btn" id="t2-style-mode-text" onclick="setMode('t2-style','text')">✏ Describe</button>
-          </div>
-          <div class="upload-area" id="t2-style-upload-area" onclick="triggerUpload('t2-style')">
-            <div class="upload-hint">tap to upload image</div>
-          </div>
-          <textarea class="slot-textarea" id="t2-style-textarea" placeholder="Describe the visual style… e.g. Warm cinematic, muted amber tones, soft shadows, clean 2D illustrated feel" style="display:none" oninput="handleTextMode('t2-style',this)"></textarea>
-          <div class="slot-status" id="status-t2-style"></div>
-          <button class="slot-clear" onclick="clearSlot(event,'t2-style')">×</button>
-        </div>
-
       </div>
-    </div>
-
-    <!-- Live @Image legend — shows which slot = which number -->
-    <div id="t2-legend" class="legend">
-      <div class="legend-title">📌 @Image Reference Map — use these in your prompt below</div>
-      <div id="t2-legend-rows"></div>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px">Slots using text descriptions are appended to the prompt automatically — no @Image tag needed for those.</div>
     </div>
 
     <!-- Prompt -->
     <div>
       <label class="lbl">Prompt</label>
-      <textarea id="t2-prompt" placeholder="Write your prompt here. Reference uploaded images using @Image1, @Image2, etc. — check the map above to see which number belongs to which slot.&#10;&#10;Example: Draw @Image1 sitting in the environment from @Image2, cinematic lighting, 16:9"></textarea>
+      <textarea id="t2-prompt" placeholder="Describe the scene — setting, characters, action, lighting, mood. e.g. A confident young man in a hoodie sitting at a desk with a glowing laptop, warm amber light, 2D illustrated style"></textarea>
     </div>
 
     <div class="status-row"><div class="dot dot-idle" id="t2-dot"></div><span id="t2-status">Ready</span></div>
@@ -426,15 +352,6 @@ button{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-r
 const refs = {};
 const testResults = {};
 
-// Slot order for @Image numbering — always Subject → Co-Subject → Scene → Style
-const IMAGE_SLOTS = ['t2-subject','t2-cosubject','t2-scene','t2-style'];
-const SLOT_LABELS = {
-  't2-subject':   'Subject',
-  't2-cosubject': 'Co-Subject',
-  't2-scene':     'Scene',
-  't2-style':     'Style'
-};
-
 // ─── API key ──────────────────────────────────────────────────────────
 function saveKey(){
   const k = document.getElementById('fal-key').value.trim();
@@ -496,7 +413,6 @@ async function handleUpload(slot, input){
     statusEl.textContent = '✗ ' + (err.message || 'Upload failed');
     input.value = '';
   }
-  updateT2State();
 }
 
 function clearSlot(e, slot){
@@ -512,7 +428,6 @@ function clearSlot(e, slot){
   if(input) input.value = '';
   const ta = document.getElementById(slot + '-textarea');
   if(ta) ta.value = '';
-  updateT2State();
 }
 
 // ─── Scene / Style mode toggle ────────────────────────────────────────
@@ -536,7 +451,6 @@ function setMode(slot, mode){
       document.getElementById('upload-' + slot).value = '';
     }
   }
-  updateT2State();
 }
 
 function handleTextMode(slot, input){
@@ -544,47 +458,6 @@ function handleTextMode(slot, input){
   const slotEl = document.getElementById('slot-' + slot);
   if(val){ refs[slot] = { text: val }; slotEl.classList.add('has-ref'); }
   else   { delete refs[slot]; slotEl.classList.remove('has-ref'); }
-  updateT2State();
-}
-
-// ─── Live @Image state — updates pill, slot badges, and legend ─────────
-function updateT2State(){
-  // Build ordered map: only slots with uploaded images get @ImageN numbers
-  const imageMap = []; // [{ slot, label, num }]
-  let counter = 1;
-  IMAGE_SLOTS.forEach(slot => {
-    if(refs[slot]?.url?.startsWith('https://')){
-      imageMap.push({ slot, label: SLOT_LABELS[slot], num: counter++ });
-    }
-  });
-
-  // Update endpoint pill
-  const pill = document.getElementById('t2-ep-pill');
-  pill.textContent = imageMap.length > 0 ? 'kling-image/o1' : 'kling-image/v3/text-to-image';
-
-  // Update @ImageN badge on each slot
-  IMAGE_SLOTS.forEach(slot => {
-    const badge = document.getElementById('imgnum-' + slot);
-    if(!badge) return;
-    const entry = imageMap.find(m => m.slot === slot);
-    badge.textContent = entry ? '@Image' + entry.num : '';
-  });
-
-  // Update legend
-  const legend = document.getElementById('t2-legend');
-  const legendRows = document.getElementById('t2-legend-rows');
-  if(imageMap.length === 0){
-    legend.classList.remove('visible');
-    return;
-  }
-  legend.classList.add('visible');
-  legendRows.innerHTML = imageMap.map(m =>
-    `<div class="legend-row">
-      <span class="legend-num">@Image${m.num}</span>
-      <span class="legend-slot">= ${m.label}</span>
-      <span class="legend-hint">→ use @Image${m.num} in your prompt to reference this image</span>
-    </div>`
-  ).join('');
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────
@@ -673,46 +546,39 @@ async function runTest1(){
   document.getElementById('t1-btn').disabled = false;
 }
 
-// ─── TEST 2: Image with References ────────────────────────────────────
+// ─── TEST 2: Flux Pro Image ────────────────────────────────────────────
 async function runTest2(){
   if(!getKey()){ alert('Save your fal.ai key first.'); return; }
-  const basePrompt = document.getElementById('t2-prompt').value.trim();
-  if(!basePrompt){ alert('Add a prompt — use the @Image map above to reference your uploaded images.'); return; }
+  const prompt = document.getElementById('t2-prompt').value.trim();
+  if(!prompt){ alert('Add a prompt describing the scene.'); return; }
 
-  // Append text-mode descriptions (same as main CFA tool)
-  let finalPrompt = basePrompt;
-  if(refs['t2-scene']?.text)  finalPrompt += ' Setting: '  + refs['t2-scene'].text + '.';
-  if(refs['t2-style']?.text)  finalPrompt += ' Style: '    + refs['t2-style'].text + '.';
-
-  // Collect image URLs in fixed slot order → determines @Image numbering
-  const imageUrls = IMAGE_SLOTS
-    .map(s => refs[s]?.url)
-    .filter(u => u?.startsWith('https://'));
-
-  let ep, body;
-  if(imageUrls.length > 0){
-    ep   = 'fal-ai/kling-image/o1';
-    body = { prompt: finalPrompt, image_urls: imageUrls, aspect_ratio:'16:9', num_images:1 };
-  } else {
-    ep   = 'fal-ai/kling-image/v3/text-to-image';
-    body = { prompt: finalPrompt, aspect_ratio:'16:9', num_images:1 };
-  }
+  const ep = 'fal-ai/flux-pro/v1.1';
+  const body = {
+    prompt,
+    image_size: 'landscape_16_9',
+    num_images: 1,
+    safety_tolerance: '2',
+    output_format: 'jpeg'
+  };
+  if(refs['t2-subject']?.url?.startsWith('https://'))
+    body.reference_image_url = refs['t2-subject'].url;
 
   document.getElementById('t2-btn').disabled = true;
-  setStatus(2,'run', imageUrls.length
-    ? 'Calling o1 with '+imageUrls.length+' reference image(s)…'
-    : 'No images uploaded — calling text-to-image…');
+  setStatus(2,'run', body.reference_image_url
+    ? 'Calling Flux Pro with subject reference…'
+    : 'Calling Flux Pro (prompt only)…');
   setResult(2,'POST → '+ep+'\n\n'+JSON.stringify(body,null,2),'running');
   try{
     const { parsed } = await callFal(ep, body);
-    const imgUrl = parsed?.images?.[0]?.url||'';
+    const imgUrl = parsed?.images?.[0]?.url || parsed?.image?.url || parsed?.images?.[0] || '';
+    if(!imgUrl) throw new Error('No image URL in response — '+JSON.stringify(parsed));
     setStatus(2,'ok','Success');
     setResult(2,JSON.stringify(parsed,null,2),'ok',imgUrl);
-    recordResult(2,true,'Test 2 — Image + References',ep,imgUrl?'Image: '+imgUrl.slice(0,80)+'…':'Response OK');
+    recordResult(2,true,'Test 2 — Flux Pro Image',ep,imgUrl?'Image: '+imgUrl.slice(0,80)+'…':'Response OK');
   }catch(err){
     setStatus(2,'fail',err.message.slice(0,80));
     setResult(2,err.message+(err.raw?'\n\nRaw:\n'+err.raw:''),'fail');
-    recordResult(2,false,'Test 2 — Image + References',ep,err.message.slice(0,120));
+    recordResult(2,false,'Test 2 — Flux Pro Image',ep,err.message.slice(0,120));
   }
   document.getElementById('t2-btn').disabled = false;
 }
